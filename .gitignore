@@ -1,0 +1,13 @@
+# Secrets & Environment
+/certificates
+/env
+*.env
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+media/
