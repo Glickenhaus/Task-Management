@@ -10,6 +10,8 @@ from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, Bl
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
+from .permissions import IsOwnerOrAdmin, IsMember, IsOwner
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 
 User = get_user_model()
 
@@ -154,19 +156,27 @@ class Logout(APIView):
 
 class ProjectView(APIView):
 
+    def get_permissions(self):
+        permission_classes = [IsAuthenticated]
+
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            permission_classes.append(IsOwner)
+
+        return [permission() for permission in permission_classes]
+
     @extend_schema(
-        operation_id="get_all projects",
+        operation_id="get_created_projects",
         summary="View Projects",
-        description="Enables an authenticated user to view all projects created.",
+        description="Enables an authenticated user to view all projects created by them.",
         request=ProjectSerializer,
         responses={
-            200: OpenApiResponse(description="Shows all projects."),
+            200: OpenApiResponse(description="Shows all projects created by the user."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token.")
         },
         tags=["Project"]
     )
     def get(self, request):
-        data = Project.objects.filter(owner=self.request.user)
+        data = Project.objects.filter(members=self.request.user)
         serializer = ProjectSerializer(data, many=True)
         return Response(serializer.data)
 
@@ -199,26 +209,53 @@ class ProjectView(APIView):
             ]
         if members_to_create:
             Member.objects.bulk_create(members_to_create, ignore_conflicts=True)
-        
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def patch(self, request, id):
-        data = get_object_or_404(Project, id=id, owner=self.request.user)
+        # Re-serialize so 'members' includes the creator + added users
+        response_serializer = ProjectSerializer(project)
+        
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        operation_id="update_project",
+        summary="Update Project Info",
+        description="Enables an authenticated user to modify a project created by them.",
+        request=ProjectSerializer,
+        responses={
+            200: OpenApiResponse(description="Project Modified."),
+            400: OpenApiResponse(description="Check credentials."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized."),
+            404: OpenApiResponse(description="Project not found.")
+        },
+        tags=["Project"]
+    )
+    def patch(self, request, pk):
+        data = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, data)
         serializer = ProjectSerializer(data, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        project = serializer.save()
+        serializer.save()
 
-        members = self.request.data.get('members', [])
-        if members:
-            # Fetch matching users in a single query, excluding the creator
-            members_to_add = User.objects.filter(username__in=members).exclude(id=self.request.user.id)
-            members_to_create = [
-                Member.objects.create(project=project, user=user, role=Member.Role.MEMBER)
-                for user in members_to_add
-            ]
-        if members_to_create:
-            Member.objects.bulk_create(members_to_create, ignore_conflicts=True)
-        
-        return Response(serializer.data, status=status.HTTP_200_CREATED)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        operation_id="delete_project",
+        summary="Delete Project",
+        description="Enables an authenticated user to delete a project created by them.",
+        request=ProjectSerializer,
+        responses={
+            205: OpenApiResponse(description="Project Created."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform action."),
+            404: OpenApiResponse(description="Project not found")
+        },
+        tags=["Project"]
+    )
+    def delete(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+        project.delete()
+
+        return Response({"Message": "Project Deleted Successfully."}, status=status.HTTP_205_RESET_CONTENT)
 
         

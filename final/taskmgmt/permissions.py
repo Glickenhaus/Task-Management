@@ -5,7 +5,7 @@ class IsOwner(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         project = obj if isinstance(obj, Project) else obj.project
-        return Member.objects.filter(project=project, user=request.user, role=Member.Role.OWNER).exists
+        return Member.objects.filter(project=project, user=request.user, role=Member.Role.OWNER).exists()
 
 class IsOwnerOrAdmin(permissions.BasePermission):
 

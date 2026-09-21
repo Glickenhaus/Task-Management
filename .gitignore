@@ -1,6 +1,5 @@
 # Secrets & Environment
 /certificates
-/env
 *.env
 
 # Python / Django
@@ -11,3 +10,7 @@ venv/
 .venv/
 env/
 media/
+
+# IDEs
+.vscode/
+.idea/

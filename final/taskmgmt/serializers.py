@@ -70,11 +70,13 @@ class LoginSerializer(TokenObtainPairSerializer):
 
 class ProjectSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
+    # Pulls just the 'username' string from each member in the project
+    members = serializers.SlugRelatedField(many=True, read_only=True, slug_field='username')
 
     class Meta:
         model = Project
         fields = ['id', 'name', 'description', 'owner', 'members', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'owner', 'created_at']
 
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
