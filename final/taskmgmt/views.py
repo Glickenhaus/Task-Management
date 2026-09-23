@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
-from .serializers import RegisterSerializer, LoginSerializer, ChangePasswordSerializer, ProjectSerializer, TaskSerializer, CommentSerializer
+from .serializers import RegisterSerializer, LoginSerializer, ChangePasswordSerializer, ProjectSerializer, RoleSerializer, TaskSerializer, CommentSerializer
 from .models import Project, Task, Comment, Member
 from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
 from rest_framework import status, serializers
@@ -262,6 +262,48 @@ class ProjectView(APIView):
 
         return Response({"Message": "Project Deleted Successfully."}, status=status.HTTP_205_RESET_CONTENT)
 
+class RoleChange(APIView):
+    permission_classes = [IsOwnerOrAdmin]
+
+    def put(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+
+        username = request.data.get('username')
+
+        member = get_object_or_404(Member, project=project, user__username=username)
+        serializer = RoleSerializer(member, data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ProjectTask(APIView):
+    permission_classes = [IsMember]
+    
+    @extend_schema(
+        operation_id="get_project_tasks",
+        summary="Get Project Tasks",
+        description="Enables an authenticated user to view the tasks associated with a project. Restricted to project members.",
+        request=ProjectSerializer,
+        responses={
+            200: OpenApiResponse(description="Displays Project Tasks."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform action."),
+            404: OpenApiResponse(description="Project not found")
+        },
+        tags=["Tasks"]
+    )
+    # Get Project Tasks
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+        data = Task.objects.filter(project=project)
+        serializer = TaskSerializer(data, many=True)
+
+        return Response(serializer.data)
+
 class AddMember(APIView):
     permission_classes = [IsOwnerOrAdmin]
 
@@ -278,6 +320,7 @@ class AddMember(APIView):
         },
         tags=["Project"]
     )
+    # View Project Members
     def get(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
@@ -295,17 +338,41 @@ class AddMember(APIView):
             400: OpenApiResponse(description="Check Credentials."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
             403: OpenApiResponse(description="Not authorized to perform action."),
-            404: OpenApiResponse(description="Project not found")
+            404: OpenApiResponse(description="Project not found.")
         },
         tags=["Project"]
     )
+    # Add Members to Project
     def post(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
 
         usernames = request.data.get('members', [])
+        invalid = []
+
+        # # 1. Fetch all existing User objects that match any of the provided usernames in ONE database query
+        # existing_users = User.objects.filter(username__in=usernames)
+
+        # # 2. Create a set of found usernames for fast lookup
+        # existing_usernames = set(existing_users.values_list('username', flat=True))
+
+        # # 3. Find which requested usernames do not exist in the database
+        # invalid_users = [u for u in usernames if u not in existing_usernames]
+
+        # # 4. If there are invalid usernames, return error response containing ALL of them
+        # if invalid_users:
+        # return Response(
+        #     {"error": f"The following usernames are invalid: {', '.join(invalid_users)}"}, 
+        #     status=status.HTTP_400_BAD_REQUEST
+        # )
+
         if not isinstance(usernames, list) or not usernames:
             return Response({"Requirement": "A non-empty username list."}, status=status.HTTP_400_BAD_REQUEST)
+        for user in usernames:
+            if not User.objects.filter(username=user).exists():
+                invalid.append(user)
+        if invalid:
+            return Response({f"{invalid} invalid."}, status=status.HTTP_400_BAD_REQUEST)
 
         users_to_add = User.objects.filter(username__in=usernames).exclude(username__in=project.members.values_list('username'))
 
@@ -322,18 +389,55 @@ class AddMember(APIView):
 class RemoveMember(APIView):
     permission_classes = [IsOwnerOrAdmin]
 
+    @extend_schema(
+        operation_id="remove_project_members",
+        summary="Remove Members",
+        description="Enables an authenticated user to remove members from a specific project. Restricted to the project owner or admins.",
+        request=ProjectSerializer,
+        responses={
+            200: OpenApiResponse(description="Removes Members."),
+            400: OpenApiResponse(description="Check Credentials."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform action."),
+            404: OpenApiResponse(description="Project not found.")
+        },
+        tags=["Project"]
+    )
+    # Remove Project Member
     def post(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
 
         usernames = request.data.get('members', [])
+        not_part = []
+        invalid = []
         if not isinstance(usernames, list) or not usernames:
             return Response({"Requirement": "A non-empty username list."}, status=status.HTTP_400_BAD_REQUEST)
+        for user in usernames:
+            if not Member.objects.filter(project=project, user__username__in=usernames).exists():
+                not_part.append(user)
+            if not User.objects.filter(username=user).exists():
+                invalid.append(user)
+        if invalid:
+            return Response({f"{invalid} invalid."}, status=status.HTTP_400_BAD_REQUEST)
+        if not_part:
+            return Response({f"{not_part} not associated with this project."}, status=status.HTTP_400_BAD_REQUEST)
 
         deleted_count, _ = Member.objects.filter(project=project, user__username__in=usernames).exclude(role=Member.Role.OWNER).delete()
 
         response_serializer = ProjectSerializer(project)
         return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+class Tasks(APIView):
+    permission_classes = [IsMember]
+
+    # Create a Task
+    def post(self, request):
+        serializer = TaskSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(created_by=self.request.user)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
         
