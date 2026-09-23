@@ -130,11 +130,20 @@ class RoleSerializer(serializers.ModelSerializer):
     def validate_role(self, value):
         request = self.context.get('request')
 
-        if request:
-            if request.user == self.instance and Member.Role in [Member.Role.ADMIN] and value in [Member.Role.OWNER]:
-                raise serializers.ValidationError({"You cannot become an owner of a project you did not create."})
-            if request.user == self.instance and value in [Member.Role.ADMIN, Member.Role.MEMBER]:
-                raise serializers.ValidationError({"You cannot relinquish your project ownership role."})
+        project = self.instance.project
+        member = Member.objects.filter(project=project, user=request.user).first()
+
+        # Get the role of the one making the request
+        role = member.role
+
+        if self.instance:
+            if self.instance.role == 'ADMIN' and role != 'OWNER':
+                raise serializers.ValidationError("Only owners can change an admin's role.")
+            if self.instance.role == 'OWNER':
+                raise serializers.ValidationError("Owner's role can not be changed.")
+            if self.instance.role in [Member.Role.ADMIN, Member.Role.MEMBER] and value == 'OWNER':
+                raise serializers.ValidationError("There can only be one owner per project.")
+
         return value
 
 class CommentSerializer(serializers.ModelSerializer):
