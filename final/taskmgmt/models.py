@@ -40,7 +40,7 @@ class Member(models.Model):
         constraints = [models.UniqueConstraint(fields=['project', 'user'], name='unique_project_membership')]
 
     def __str__(self):
-        return f"{self.user}, belongs to Project {self.project}, Role {self.role}"
+        return f"{self.user}, member of Project {self.project}, Role {self.role}"
 
 class Task(models.Model):
     class Status(models.TextChoices):
@@ -52,7 +52,7 @@ class Task(models.Model):
     title = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    due_date = models.DateTimeField(null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)
 
     # Relationships
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks')
