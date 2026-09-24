@@ -497,4 +497,18 @@ class Tasks(APIView):
         task.delete()
         return Response({f"Task ({task.title}) deleted successfully."}, status=status.HTTP_205_RESET_CONTENT)
 
+class Comments(APIView):
+
+    permission_classes = [IsMember]
+
+    def post(self, request, pk, pkt):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+        task = get_object_or_404(Task, pk=pkt)
+        serializer = CommentSerializer(data=request.data, context={'request': request, 'project': project, 'task': task})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(task=task, user=self.request.user)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
         

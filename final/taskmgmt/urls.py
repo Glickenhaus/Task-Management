@@ -17,4 +17,5 @@ urlpatterns = [
     path('projects/<int:pk>/tasks/create/', views.Tasks.as_view(http_method_names=['post']), name='create_task'),
     path('projects/<int:pk>/tasks/<int:pkt>/update/', views.Tasks.as_view(http_method_names=['patch']), name='update_task'),
     path('projects/<int:pk>/tasks/<int:pkt>/delete/', views.Tasks.as_view(http_method_names=['delete']), name='delete_task'),
+    path('projects/<int:pk>/tasks/<int:pkt>/comment/', views.Comments.as_view(), name='comment_on_task'),
 ]

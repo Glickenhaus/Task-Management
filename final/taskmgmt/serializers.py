@@ -162,9 +162,35 @@ class RoleSerializer(serializers.ModelSerializer):
         return value
 
 class CommentSerializer(serializers.ModelSerializer):
+    task = serializers.SlugRelatedField(read_only=True, slug_field='title')
     user = serializers.ReadOnlyField(source='user.username')
     
     class Meta:
         model = Comment
         fields = ['id', 'title', 'comment', 'task', 'user', 'date']
         read_only_fields = ['id', 'date']
+
+    def validate(self, attrs):
+
+        request = self.context.get('request')
+        user = request.user
+
+        project = self.context.get('project', getattr(self.instance, 'project', None))
+        task = self.context.get('task', getattr(self.instance, 'task', None))
+        comment = attrs.get('comment')
+
+        # Query DB to prevent identical duplicate comments on the same task by same user
+        exists = Comment.objects.filter(task=task, user=request.user, comment=comment).exists()
+
+        if exists:
+            raise serializers.ValidationError({'comment': 'You have already posted an identical comment on this task.'})
+
+        member = Member.objects.filter(project=project, user=user).first()
+        if user and not member:
+            raise serializers.ValidationError({"project": f"You must be a member of {project.name} to create or modify its comments."})
+        
+        if task.project != project:
+            raise serializers.ValidationError({"task": "You can not comment on a task of a project it does not belong to."})
+
+        return attrs
+        
