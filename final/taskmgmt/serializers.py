@@ -79,7 +79,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'owner', 'created_at']
 
 class TaskSerializer(serializers.ModelSerializer):
-    project = serializers.SlugRelatedField(required=True, slug_field='name', queryset=Project.objects.all())
+    project = serializers.SlugRelatedField(slug_field='name', read_only=True)
     assigned_to = serializers.SlugRelatedField(required=False, slug_field='username', queryset=User.objects.all())
     created_by = serializers.SlugRelatedField(read_only=True, slug_field='username')
 
@@ -96,27 +96,42 @@ class TaskSerializer(serializers.ModelSerializer):
         user = getattr(request, 'user', None)
         
         # Determine the project (from payload or existing instance)
-        project = attrs.get('project', getattr(self.instance, 'project', None))
+        project = self.context.get('project', getattr(self.instance, 'project', None))
 
         # Determine the assignee (from payload or existing instance)
         assigned_to = attrs.get('assigned_to', getattr(self.instance, 'assigned_to', None))
 
         restricted_fields = ['title', 'description', 'due_date', 'assigned_to']
-        superuser_only_field = ['project']
-
-        if self.instance:
-            for field in restricted_fields:
-                if field in attrs and Member.Role in [Member.Role.MEMBER]:
-                    raise serializers.ValidationError({f"You do not have permission to modify {field}."})
-            if superuser_only_field in attrs and not user.is_superuser:
-                raise serializers.ValidationError({"You can not change this task's project."})
 
         if project:
-            if user and not project.members.filter(id=user.id).exists():
+            member = Member.objects.filter(project=project, user=user).first()
+            if user and not member:
                 raise serializers.ValidationError({"project": f"You must be a member of {project.name} to create or modify its tasks."})
+            
+            # Get the role of the one making the request
+            role = member.role
+
             if assigned_to and not project.members.filter(id=assigned_to.id).exists():
                 raise serializers.ValidationError({"assigned_to": f"User {assigned_to.username} is not a member of project {project.name}."})
+
+            if user and role == 'MEMBER' and assigned_to != user:
+                raise serializers.ValidationError({"assigned_to": "Only admins or owners can assign tasks to others."})
+
+        restricted = []
+        if self.instance:
+            task = self.context.get('task', getattr(self.instance, 'task', None))
+            if project and task.project != project:
+                raise serializers.ValidationError({"task": f"Task {task.id} is not associated with project {project.name}."})
+        
+            if 'project' in attrs and not user.is_superuser:
+                raise serializers.ValidationError("You can not change this task's project.")
             
+            for field in restricted_fields:
+                if field in attrs and role == Member.Role.MEMBER:
+                    restricted.append(field)
+            if restricted:
+                raise serializers.ValidationError(f"You do not have permission to modify {restricted}.")     
+
         return attrs
 
 class RoleSerializer(serializers.ModelSerializer):

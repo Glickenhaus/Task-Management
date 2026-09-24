@@ -50,7 +50,7 @@ class Register(APIView):
     operation_id="login",
     summary="Login",
     description="Verifies the credentials passed match, and issues JWT Tokens to the user.",
-    request=ChangePasswordSerializer,
+    request=LoginSerializer,
     responses={
         200: OpenApiResponse(description="Login Successful."),
         401: OpenApiResponse(description="No matching credentials found.")
@@ -245,7 +245,6 @@ class ProjectView(APIView):
         operation_id="delete_project",
         summary="Delete Project",
         description="Enables an authenticated user to delete a project created by them.",
-        request=ProjectSerializer,
         responses={
             205: OpenApiResponse(description="Project Deleted."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
@@ -265,6 +264,21 @@ class ProjectView(APIView):
 class RoleChange(APIView):
     permission_classes = [IsOwnerOrAdmin]
 
+    @extend_schema(
+        operation_id="change_role",
+        summary="Change Role",
+        description="Enables an authenticated user to change the role of a user in a project. Restricted to project owner or admins.",
+        request=RoleSerializer,
+        responses={
+            200: OpenApiResponse(description="Role Changed."),
+            400: OpenApiResponse(description="Check credentials."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized."),
+            404: OpenApiResponse(description="Project not found.")
+        },
+        tags=["Project"]
+    )
+    # Change Project Member Role
     def put(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
@@ -277,32 +291,6 @@ class RoleChange(APIView):
         serializer.save()
 
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class ProjectTask(APIView):
-    permission_classes = [IsMember]
-    
-    @extend_schema(
-        operation_id="get_project_tasks",
-        summary="Get Project Tasks",
-        description="Enables an authenticated user to view the tasks associated with a project. Restricted to project members.",
-        request=ProjectSerializer,
-        responses={
-            200: OpenApiResponse(description="Displays Project Tasks."),
-            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
-            403: OpenApiResponse(description="Not authorized to perform action."),
-            404: OpenApiResponse(description="Project not found")
-        },
-        tags=["Tasks"]
-    )
-    # Get Project Tasks
-    def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk)
-        self.check_object_permissions(request, project)
-        data = Task.objects.filter(project=project)
-        serializer = TaskSerializer(data, many=True)
-
-        return Response(serializer.data)
 
 class AddMember(APIView):
     permission_classes = [IsOwnerOrAdmin]
@@ -324,15 +312,16 @@ class AddMember(APIView):
     def get(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
-        members = (project.members.values_list('username', flat=True))
-        
-        return Response({"Members": list(members)}, status=status.HTTP_200_OK)
+        members = Member.objects.filter(project=project)
+        serializer = RoleSerializer(members, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(
         operation_id="add_project_members",
         summary="Add Members",
         description="Enables an authenticated user to add members to a specific project. Restricted to the project owner or admins.",
-        request=ProjectSerializer,
+        request=inline_serializer(name="AddMembers", fields={'members': serializers.ListField(help_text="A list of members to be added.")}),
         responses={
             200: OpenApiResponse(description="Adds Members."),
             400: OpenApiResponse(description="Check Credentials."),
@@ -393,7 +382,7 @@ class RemoveMember(APIView):
         operation_id="remove_project_members",
         summary="Remove Members",
         description="Enables an authenticated user to remove members from a specific project. Restricted to the project owner or admins.",
-        request=ProjectSerializer,
+        request=inline_serializer(name="RemoveMembers", fields={'members': serializers.ListField(help_text="A list of members to be removed.")}),
         responses={
             200: OpenApiResponse(description="Removes Members."),
             400: OpenApiResponse(description="Check Credentials."),
@@ -429,15 +418,83 @@ class RemoveMember(APIView):
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 class Tasks(APIView):
-    permission_classes = [IsMember]
 
+    def get_permissions(self):
+        permission_classes = [IsAuthenticated]
+
+        if self.request.method in ['GET', 'POST', 'PATCH']:
+            permission_classes.append(IsMember)
+    
+        if self.request.method in ['DELETE']:
+            permission_classes.append(IsOwnerOrAdmin)
+    
+        return [permission() for permission in permission_classes]
+
+    @extend_schema(
+    operation_id="get_project_tasks",
+    summary="View Project Tasks",
+    description="Enables an authenticated user to view the tasks associated with a project. Restricted to project members.",
+    request=TaskSerializer,
+    responses={
+        200: OpenApiResponse(description="Displays Project Tasks."),
+        401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+        403: OpenApiResponse(description="Not authorized to perform action."),
+        404: OpenApiResponse(description="Project not found")
+    },
+    tags=["Tasks"]
+    )
+    # Get Project Tasks
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+        data = Task.objects.filter(project=project)
+        serializer = TaskSerializer(data, many=True)
+
+        return Response(serializer.data)
+
+    @extend_schema(
+        operation_id="create_task",
+        summary="Create Task",
+        description="Enables an authenticated user to create a task in a specific project they belong to.",
+        request=TaskSerializer,
+        responses={
+            200: OpenApiResponse(description="Removes Members."),
+            400: OpenApiResponse(description="Check Credentials."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform action."),
+            404: OpenApiResponse(description="Project not found.")
+        },
+        tags=["Tasks"]
+    )
     # Create a Task
-    def post(self, request):
-        serializer = TaskSerializer(data=request.data, context={'request': request})
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+        serializer = TaskSerializer(data=request.data, context={'request': request, 'project': project})
         serializer.is_valid(raise_exception=True)
-        serializer.save(created_by=self.request.user)
+        serializer.save(project=project, created_by=self.request.user)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def patch(self, request, pk, pkt):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+        task = get_object_or_404(Task, pk=pkt)
+        serializer = TaskSerializer(task, data=request.data, partial=True, context={'request': request, 'project': project, 'task': task})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk, pkt):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+        task = get_object_or_404(Task, pk=pkt)
+
+        if task.project != project:
+            return Response({"task": "You can not delete a task of a project it does not belong to."}, status=status.HTTP_403_FORBIDDEN)
+
+        task.delete()
+        return Response({f"Task ({task.title}) deleted successfully."}, status=status.HTTP_205_RESET_CONTENT)
 
         

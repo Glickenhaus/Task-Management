@@ -2,6 +2,8 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
+import datetime
+from django.core.validators import MinValueValidator
 
 # Create your models here.
 class User(AbstractUser):
@@ -47,12 +49,11 @@ class Task(models.Model):
         PENDING = 'PENDING', 'Pending'
         IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
         COMPLETED = 'COMPLETED', 'Completed'
-        CANCELLED = 'CANCELLED', 'Cancelled'
 
     title = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    due_date = models.DateField(null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True, validators=[MinValueValidator(datetime.date.today())])
 
     # Relationships
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks')

@@ -13,6 +13,8 @@ urlpatterns = [
     path('projects/<int:pk>/members/add/', views.AddMember.as_view(http_method_names=['post']), name='add_members'),
     path('projects/<int:pk>/members/remove/', views.RemoveMember.as_view(http_method_names=['post']), name='remove_members'),
     path('projects/<int:pk>/members/role/', views.RoleChange.as_view(), name='change_member_role'),
-    path('projects/<int:pk>/tasks/', views.ProjectTask.as_view(http_method_names=['get']), name='project_tasks'),
-    path('tasks/create/', views.Tasks.as_view(), name='create_task'),
+    path('projects/<int:pk>/tasks/', views.Tasks.as_view(http_method_names=['get']), name='project_tasks'),
+    path('projects/<int:pk>/tasks/create/', views.Tasks.as_view(http_method_names=['post']), name='create_task'),
+    path('projects/<int:pk>/tasks/<int:pkt>/update/', views.Tasks.as_view(http_method_names=['patch']), name='update_task'),
+    path('projects/<int:pk>/tasks/<int:pkt>/delete/', views.Tasks.as_view(http_method_names=['delete']), name='delete_task'),
 ]
