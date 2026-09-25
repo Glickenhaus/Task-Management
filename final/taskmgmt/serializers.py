@@ -91,9 +91,12 @@ class TaskSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         # Enforce Rule: Only members of the project can be assigned tasks.
         # Handles both creation (POST) and partial updates (PATCH).
-
+        
         request = self.context.get('request')
         user = getattr(request, 'user', None)
+
+        if user and user.is_superuser:
+            return attrs
         
         # Determine the project (from payload or existing instance)
         project = self.context.get('project', getattr(self.instance, 'project', None))
@@ -145,6 +148,9 @@ class RoleSerializer(serializers.ModelSerializer):
     def validate_role(self, value):
         request = self.context.get('request')
 
+        if request.user and request.user.is_superuser:
+            return value
+        
         project = self.instance.project
         member = Member.objects.filter(project=project, user=request.user).first()
 
@@ -175,6 +181,9 @@ class CommentSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         user = request.user
 
+        if user and user.is_superuser:
+            return attrs
+
         project = self.context.get('project', getattr(self.instance, 'project', None))
         task = self.context.get('task', getattr(self.instance, 'task', None))
         comment = attrs.get('comment')
@@ -185,12 +194,8 @@ class CommentSerializer(serializers.ModelSerializer):
         if exists:
             raise serializers.ValidationError({'comment': 'You have already posted an identical comment on this task.'})
 
-        member = Member.objects.filter(project=project, user=user).first()
-        if user and not member:
-            raise serializers.ValidationError({"project": f"You must be a member of {project.name} to create or modify its comments."})
-        
         if task.project != project:
-            raise serializers.ValidationError({"task": "You can not comment on a task of a project it does not belong to."})
+            raise serializers.ValidationError({"task": f"Task {task.id} is not associated with project {project.name}."})
 
         return attrs
         

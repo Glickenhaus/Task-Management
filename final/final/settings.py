@@ -170,7 +170,7 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Task Management System API',
-    'DESCRIPTION': 'API Documentation for Task Management',
+    'DESCRIPTION': 'API Documentation for Task Management.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,

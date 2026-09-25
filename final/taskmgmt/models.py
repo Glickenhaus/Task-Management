@@ -15,7 +15,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['username']
 
     def __str__(self):
-        return self.username
+        return f"{self.username, self.id}"
 
 class Project(models.Model):
     name = models.CharField(max_length=200, unique=True)

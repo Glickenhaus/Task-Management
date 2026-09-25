@@ -10,8 +10,8 @@ from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, Bl
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
-from .permissions import IsOwnerOrAdmin, IsMember, IsOwner
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from .permissions import IsOwnerOrAdmin, IsMember, IsOwner, CanManageTask
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 User = get_user_model()
 
@@ -112,7 +112,7 @@ class Users(APIView):
         summary="Delete Account",
         description="Allows the user to delete their account. Auth is required.",
         responses={
-            204: OpenApiResponse(description="Deletion Successful."),
+            205: OpenApiResponse(description="Deletion Successful."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
             404: OpenApiResponse(description="User not found.")
         },
@@ -123,7 +123,7 @@ class Users(APIView):
         user = get_object_or_404(User, username=self.request.user)
         user.delete()
 
-        return Response({'Status': 'Deleted Account Successfully.'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'Status': 'Deleted Account Successfully.'}, status=status.HTTP_205_RESET_CONTENT)
 
         
 @extend_schema(
@@ -178,6 +178,8 @@ class ProjectView(APIView):
     # View Created Projects
     def get(self, request):
         data = Project.objects.filter(members=self.request.user)
+        if request.user.is_superuser:
+            data = Project.objects.all()
         serializer = ProjectSerializer(data, many=True)
         return Response(serializer.data)
 
@@ -249,7 +251,7 @@ class ProjectView(APIView):
             205: OpenApiResponse(description="Project Deleted."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
             403: OpenApiResponse(description="Not authorized to perform action."),
-            404: OpenApiResponse(description="Project not found")
+            404: OpenApiResponse(description="Project not found.")
         },
         tags=["Project"]
     )
@@ -419,16 +421,7 @@ class RemoveMember(APIView):
 
 class Tasks(APIView):
 
-    def get_permissions(self):
-        permission_classes = [IsAuthenticated]
-
-        if self.request.method in ['GET', 'POST', 'PATCH']:
-            permission_classes.append(IsMember)
-    
-        if self.request.method in ['DELETE']:
-            permission_classes.append(IsOwnerOrAdmin)
-    
-        return [permission() for permission in permission_classes]
+    permission_classes = [CanManageTask]
 
     @extend_schema(
     operation_id="get_project_tasks",
@@ -439,9 +432,9 @@ class Tasks(APIView):
         200: OpenApiResponse(description="Displays Project Tasks."),
         401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
         403: OpenApiResponse(description="Not authorized to perform action."),
-        404: OpenApiResponse(description="Project not found")
+        404: OpenApiResponse(description="Project not found.")
     },
-    tags=["Tasks"]
+    tags=["Task"]
     )
     # Get Project Tasks
     def get(self, request, pk):
@@ -464,7 +457,7 @@ class Tasks(APIView):
             403: OpenApiResponse(description="Not authorized to perform action."),
             404: OpenApiResponse(description="Project not found.")
         },
-        tags=["Tasks"]
+        tags=["Task"]
     )
     # Create a Task
     def post(self, request, pk):
@@ -476,6 +469,21 @@ class Tasks(APIView):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        operation_id="update_task",
+        summary="Update Task",
+        description="Enables an authenticated user to update a task's standing. Members can only update status, the rest are handled by owners or admins.",
+        request=TaskSerializer,
+        responses={
+            200: OpenApiResponse(description="Task Updated."),
+            400: OpenApiResponse(description="Check credentials."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized."),
+            404: OpenApiResponse(description="Project or task not found.")
+        },
+        tags=["Task"]
+    )
+    # Update Task
     def patch(self, request, pk, pkt):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
@@ -486,6 +494,18 @@ class Tasks(APIView):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        operation_id="delete_task",
+        summary="Delete Task",
+        description="Enables an authenticated user to delete a task in a project where they belong to. Restricted to project owners or admins.",
+        responses={
+            205: OpenApiResponse(description="Task Deleted."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform action."),
+            404: OpenApiResponse(description="Project or task not found.")
+        },
+        tags=["Task"]
+    )
     def delete(self, request, pk, pkt):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
@@ -501,6 +521,41 @@ class Comments(APIView):
 
     permission_classes = [IsMember]
 
+    @extend_schema(
+    operation_id="get_project_comments",
+    summary="View Project Comments",
+    description="Enables an authenticated user to view the comments associated with a project. Restricted to project members.",
+    request=CommentSerializer,
+    responses={
+        200: OpenApiResponse(description="Displays Project Comments."),
+        401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+        403: OpenApiResponse(description="Not authorized to perform action."),
+        404: OpenApiResponse(description="Project not found.")
+    },
+    tags=["Task"]
+    )
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+        comment = Comment.objects.filter(task__project=project)
+        serializer = CommentSerializer(comment, many=True, context={'request': request})
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        operation_id="make_comment",
+        summary="Comment on a task",
+        description="Enables an authenticated user to comment on a task in a specific project they belong to.",
+        request=CommentSerializer,
+        responses={
+            201: OpenApiResponse(description="Comment Made."),
+            400: OpenApiResponse(description="Check Credentials."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform action."),
+            404: OpenApiResponse(description="Project or task not found.")
+        },
+        tags=["Task"]
+    )
     def post(self, request, pk, pkt):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
@@ -510,5 +565,73 @@ class Comments(APIView):
         serializer.save(task=task, user=self.request.user)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class Admin(APIView):
+    permission_classes = [IsAdminUser]
+
+    @extend_schema(
+        operation_id="get_all_users",
+        summary="All Users",
+        description="Fetches the information of all registered users. Admin Auth is required.",
+        request=RegisterSerializer,
+        responses={
+            200: OpenApiResponse(description="Displays all users'information."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform this action.")
+        },
+        tags=["Admin"]
+    )
+    # Get all users
+    def get(self, request):
+        all_users = User.objects.all()
+        serializer = RegisterSerializer(all_users, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        operation_id="delete_user",
+        summary="Delete User",
+        description="Deletes a user's account relative to their id. Admin Auth is required.",
+        responses={
+            205: OpenApiResponse(description="Deletion Successful."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform this action."),
+            404: OpenApiResponse(description="User not found.")
+        },
+        tags=["Admin"]
+    )
+    # Delete user
+    def delete(self, request, id):
+        user = get_object_or_404(User, id=id)
+        if user == self.request.user:
+            return Response("You cannot delete your account.", status=status.HTTP_406_NOT_ACCEPTABLE)
+        user.delete()
+        return Response({'Status': f"Deleted user {user.username.title()}."}, status=status.HTTP_205_NO_CONTENT)
+
+
+class AdminProject(APIView):
+
+    permission_classes = [IsAdminUser]
+
+    @extend_schema(
+        operation_id="get_all_info",
+        summary="Get All Information",
+        description="Fetches the information of all projects, tasks, and comments. Admin Auth is required.",
+        request=(ProjectSerializer, TaskSerializer, CommentSerializer),
+        responses={
+            200: OpenApiResponse(description="Displays all information."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform this action.")
+        },
+        tags=["Admin"]
+    )
+    def get(self, request):
+        project = Project.objects.all()
+        task = Task.objects.all()
+        comment = Comment.objects.all()
+        serializer = ProjectSerializer(project, many=True)
+        serial = TaskSerializer(task, many=True)
+        ser = CommentSerializer(comment, many=True)
+
+        return Response(({"Projects": serializer.data}, {"Tasks": serial.data}, {"Comments": ser.data}), status=status.HTTP_200_OK)
 
         

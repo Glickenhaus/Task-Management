@@ -4,12 +4,16 @@ from .models import Project, Member, Task
 class IsOwner(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
+        if request.user and request.user.is_superuser:
+            return True
         project = obj if isinstance(obj, Project) else obj.project
         return Member.objects.filter(project=project, user=request.user, role=Member.Role.OWNER).exists()
 
 class IsOwnerOrAdmin(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
+        if request.user and request.user.is_superuser:
+            return True
         project = obj if isinstance(obj, Project) else obj.project
         member = Member.objects.filter(project=project, user=request.user).first()
         if not member:
@@ -19,6 +23,8 @@ class IsOwnerOrAdmin(permissions.BasePermission):
 class CanManageTask(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
+        if request.user and request.user.is_superuser:
+            return True
         if not isinstance(obj, Task):
             return False
         member = Member.objects.filter(project=obj.project, user=request.user).first()
@@ -35,6 +41,8 @@ class CanManageTask(permissions.BasePermission):
 class IsMember(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
+        if request.user and request.user.is_superuser:
+            return True
         project = obj if isinstance(obj, Project) else obj.project
         return Member.objects.filter(project=project, user=request.user).exists()
 
