@@ -421,7 +421,16 @@ class RemoveMember(APIView):
 
 class Tasks(APIView):
 
-    permission_classes = [CanManageTask]
+    def get_permissions(self):
+        permission_classes = [IsAuthenticated]
+
+        if self.request.method in ['GET', 'POST', 'PATCH']:
+            permission_classes.append(IsMember)
+
+        if self.request.method in ['DELETE']:
+            permission_classes.append(IsOwnerOrAdmin)
+    
+        return [permission() for permission in permission_classes]
 
     @extend_schema(
     operation_id="get_project_tasks",

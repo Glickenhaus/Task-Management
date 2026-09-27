@@ -104,6 +104,8 @@ class TaskSerializer(serializers.ModelSerializer):
         # Determine the assignee (from payload or existing instance)
         assigned_to = attrs.get('assigned_to', getattr(self.instance, 'assigned_to', None))
 
+        status = attrs.get('status', getattr(self.instance, 'status', None))
+
         restricted_fields = ['title', 'description', 'due_date', 'assigned_to']
 
         if project:
@@ -119,6 +121,9 @@ class TaskSerializer(serializers.ModelSerializer):
 
             if user and role == 'MEMBER' and assigned_to != user:
                 raise serializers.ValidationError({"assigned_to": "Only admins or owners can assign tasks to others."})
+
+            if not self.instance and status in ['IN_PROGRESS', 'COMPLETED']:
+                raise serializers.ValidationError({"status": "Status can only be set to 'PENDING' upon creation."})
 
         restricted = []
         if self.instance:
