@@ -84,16 +84,16 @@ WSGI_APPLICATION = 'final.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
+        default=os.environ.get('DATABASE_URL'),
         conn_max_age=600,
         ssl_require=True
     )
 }
 
-if os.getenv('AIVEN_CA_CERT_PATH'):
+if os.environ.get('AIVEN_CA_CERT_PATH'):
     DATABASES['default']['OPTIONS'] = {
         'ssl': {
-            'ca': os.getenv('AIVEN_CA_CERT_PATH')
+            'ca': os.environ.get('AIVEN_CA_CERT_PATH')
         }
     }
 
