@@ -36,18 +36,22 @@ class RegisterSerializer(serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True, write_only=True)
-    new_password= serializers.CharField(required=True, write_only=True, validators=[validate_password])
+    old_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
 
     def validate_old_password(self, value):
         user = self.context['request'].user
         if not user.check_password(value):
-            raise serializers.ValidationError("Your old password was entered incorrectly.")
+            raise serializers.ValidationError("Your old password was entered incorrectly")
         return value
+
 
     def validate(self, attrs):
         if attrs['old_password'] == attrs['new_password']:
-            raise serializers.ValidationError[{"new_password": "Your old and new password cannot be the same."}]       
+            raise serializers.ValidationError({
+                'new_password': 'Your new password can not be the same as your old password.'
+            })
+        
         return attrs
 
 class LoginSerializer(TokenObtainPairSerializer):
