@@ -46,7 +46,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
-        if attrs['old_password'] == attrs('new_password'):
+        if attrs['old_password'] == attrs['new_password']:
             raise serializers.ValidationError[{"new_password": "Your old and new password cannot be the same."}]       
         return attrs
 
@@ -71,7 +71,7 @@ class LoginSerializer(TokenObtainPairSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
     # Pulls just the 'username' string from each member in the project
-    members = serializers.SlugRelatedField(many=True, slug_field='username', queryset=Member.objects.all())
+    members = serializers.SlugRelatedField(many=True, slug_field='username', queryset=User.objects.all())
 
     class Meta:
         model = Project
