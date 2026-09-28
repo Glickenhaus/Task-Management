@@ -285,7 +285,7 @@ class RoleChange(APIView):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
 
-        username = request.data.get('username')
+        username = request.data.get('user')
 
         member = get_object_or_404(Member, project=project, user__username=username)
         serializer = RoleSerializer(member, data=request.data, context={'request': request})
