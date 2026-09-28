@@ -90,12 +90,11 @@ DATABASES = {
     )
 }
 
-if os.environ.get('AIVEN_CA_CERT_PATH'):
-    DATABASES['default']['OPTIONS'] = {
-        'ssl': {
-            'ca': os.environ.get('AIVEN_CA_CERT_PATH')
-        }
+DATABASES['default']['OPTIONS'] = {
+    'ssl': {
+        'ca': os.environ.get('AIVEN_CA_CERT_PATH')
     }
+}
 
 
 # Password validation
