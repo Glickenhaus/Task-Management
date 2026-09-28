@@ -223,7 +223,7 @@ class ProjectView(APIView):
         operation_id="update_project",
         summary="Update Project Info",
         description="Enables an authenticated user to modify a project created by them.",
-        request=ProjectSerializer,
+        request=inline_serializer(name="UpdateProjectRequest", fields={"name": serializers.CharField(required=False), "description": serializers.CharField(required=False)}),
         responses={
             200: OpenApiResponse(description="Project Modified."),
             400: OpenApiResponse(description="Check credentials."),
