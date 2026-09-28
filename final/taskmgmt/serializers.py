@@ -144,11 +144,11 @@ class TaskSerializer(serializers.ModelSerializer):
 
 class RoleSerializer(serializers.ModelSerializer):
     # 1. Accept username in payload for identification, but mark read_only so DRF doesn't try to write/update it on the User model.
-    username = serializers.CharField(source='user.username', read_only=True)
+    user = serializers.CharField(source='user.username', read_only=True)
 
     class Meta:
         model = Member
-        fields = ['username', 'role']
+        fields = ['user', 'role']
 
     def validate_role(self, value):
         request = self.context.get('request')
