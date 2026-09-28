@@ -264,7 +264,7 @@ class ProjectView(APIView):
         return Response({"Message": "Project Deleted Successfully."}, status=status.HTTP_205_RESET_CONTENT)
 
 class RoleChange(APIView):
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     @extend_schema(
         operation_id="change_role",
@@ -295,7 +295,7 @@ class RoleChange(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class AddMember(APIView):
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     @extend_schema(
         operation_id="view_project_members",
@@ -378,7 +378,7 @@ class AddMember(APIView):
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 class RemoveMember(APIView):
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     @extend_schema(
         operation_id="remove_project_members",
@@ -528,7 +528,7 @@ class Tasks(APIView):
 
 class Comments(APIView):
 
-    permission_classes = [IsMember]
+    permission_classes = [IsAuthenticated, IsMember]
 
     @extend_schema(
     operation_id="get_project_comments",
@@ -576,7 +576,7 @@ class Comments(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class Admin(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     @extend_schema(
         operation_id="get_all_users",
@@ -619,7 +619,7 @@ class Admin(APIView):
 
 class AdminProject(APIView):
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     @extend_schema(
         operation_id="get_all_info",
