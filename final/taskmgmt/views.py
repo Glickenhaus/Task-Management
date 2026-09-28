@@ -323,7 +323,7 @@ class AddMember(APIView):
         operation_id="add_project_members",
         summary="Add Members",
         description="Enables an authenticated user to add members to a specific project. Restricted to the project owner or admins.",
-        request=ProjectSerializer['members'],
+        request=inline_serializer(name="AddMembersRequest", fields={"members": serializers.ListField(child=serializers.CharField(), help_text="List of members to add", example=["john_doe", "jane_smith"])}),
         responses={
             200: OpenApiResponse(description="Adds Members."),
             400: OpenApiResponse(description="Check Credentials."),
@@ -384,7 +384,7 @@ class RemoveMember(APIView):
         operation_id="remove_project_members",
         summary="Remove Members",
         description="Enables an authenticated user to remove members from a specific project. Restricted to the project owner or admins.",
-        request=ProjectSerializer['members'],
+        request=inline_serializer(name="RemoveMembersRequest", fields={"members": serializers.ListField(child=serializers.CharField(), help_text="List of members to remove", example=["john_doe", "jane_smith"])}),
         responses={
             200: OpenApiResponse(description="Removes Members."),
             400: OpenApiResponse(description="Check Credentials."),
