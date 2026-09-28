@@ -112,7 +112,7 @@ class Users(APIView):
         summary="Delete Account",
         description="Allows the user to delete their account. Auth is required.",
         responses={
-            205: OpenApiResponse(description="Deletion Successful."),
+            204: OpenApiResponse(description="Deletion Successful."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
             404: OpenApiResponse(description="User not found.")
         },
@@ -120,10 +120,10 @@ class Users(APIView):
     )
     # Delete my account
     def delete(self, request):
-        user = get_object_or_404(User, username=self.request.user)
+        user = request.user
         user.delete()
 
-        return Response({'Status': 'Deleted Account Successfully.'}, status=status.HTTP_205_RESET_CONTENT)
+        return Response({'Status': 'Deleted Account Successfully.'}, status=status.HTTP_204_NO_CONTENT)
 
         
 @extend_schema(
@@ -132,7 +132,7 @@ class Users(APIView):
     description="Logs out the user after their refesh token is passed. Auth is required.",
     request=inline_serializer(name="LogoutRequest", fields={'refresh': serializers.CharField(help_text='The refresh token to blacklist after logout.')}),
     responses={
-        205: OpenApiResponse(description="Logout Successful."),
+        204: OpenApiResponse(description="Logout Successful."),
         400: OpenApiResponse(description="Refresh Token is either expired, invalid or blacklisted."),
         401: OpenApiResponse(description="Unauthenticated or Invalid Token.")
     },
@@ -148,7 +148,7 @@ class Logout(APIView):
             token = RefreshToken(refresh_token)
             token.blacklist()
 
-            return Response({"Status": "Logged out successfully."}, status=status.HTTP_205_RESET_CONTENT)
+            return Response({"Status": "Logged out successfully."}, status=status.HTTP_204_NO_CONTENT)
 
         except TokenError as e:
             # 3. Catch invalid, expired, or already blacklisted tokens
@@ -248,7 +248,7 @@ class ProjectView(APIView):
         summary="Delete Project",
         description="Enables an authenticated user to delete a project created by them.",
         responses={
-            205: OpenApiResponse(description="Project Deleted."),
+            204: OpenApiResponse(description="Project Deleted."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
             403: OpenApiResponse(description="Not authorized to perform action."),
             404: OpenApiResponse(description="Project not found.")
@@ -261,7 +261,7 @@ class ProjectView(APIView):
         self.check_object_permissions(request, project)
         project.delete()
 
-        return Response({"Message": "Project Deleted Successfully."}, status=status.HTTP_205_RESET_CONTENT)
+        return Response({"Message": "Project Deleted Successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 class RoleChange(APIView):
     permission_classes = [IsOwnerOrAdmin]
@@ -460,7 +460,7 @@ class Tasks(APIView):
         description="Enables an authenticated user to create a task in a specific project they belong to.",
         request=TaskSerializer,
         responses={
-            200: OpenApiResponse(description="Removes Members."),
+            201: OpenApiResponse(description="Task Created."),
             400: OpenApiResponse(description="Check Credentials."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
             403: OpenApiResponse(description="Not authorized to perform action."),
@@ -508,7 +508,7 @@ class Tasks(APIView):
         summary="Delete Task",
         description="Enables an authenticated user to delete a task in a project where they belong to. Restricted to project owners or admins.",
         responses={
-            205: OpenApiResponse(description="Task Deleted."),
+            204: OpenApiResponse(description="Task Deleted."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
             403: OpenApiResponse(description="Not authorized to perform action."),
             404: OpenApiResponse(description="Project or task not found.")
@@ -524,7 +524,7 @@ class Tasks(APIView):
             return Response({"task": "You can not delete a task of a project it does not belong to."}, status=status.HTTP_403_FORBIDDEN)
 
         task.delete()
-        return Response({f"Task ({task.title}) deleted successfully."}, status=status.HTTP_205_RESET_CONTENT)
+        return Response({f"Task ({task.title}) deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 class Comments(APIView):
 
@@ -601,7 +601,7 @@ class Admin(APIView):
         summary="Delete User",
         description="Deletes a user's account relative to their id. Admin Auth is required.",
         responses={
-            205: OpenApiResponse(description="Deletion Successful."),
+            204: OpenApiResponse(description="Deletion Successful."),
             401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
             403: OpenApiResponse(description="Not authorized to perform this action."),
             404: OpenApiResponse(description="User not found.")
@@ -614,7 +614,7 @@ class Admin(APIView):
         if user == self.request.user:
             return Response("You cannot delete your account.", status=status.HTTP_406_NOT_ACCEPTABLE)
         user.delete()
-        return Response({'Status': f"Deleted user {user.username.title()}."}, status=status.HTTP_205_NO_CONTENT)
+        return Response({'Status': f"Deleted user {user.username.title()}."}, status=status.HTTP_204_NO_CONTENT)
 
 
 class AdminProject(APIView):
