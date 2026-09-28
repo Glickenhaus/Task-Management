@@ -144,7 +144,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
 class RoleSerializer(serializers.ModelSerializer):
     # 1. Accept username in payload for identification, but mark read_only so DRF doesn't try to write/update it on the User model.
-    user = serializers.CharField(source='user.username', read_only=True)
+    user = serializers.SlugRelatedField(slug_field='username', queryset=User.objects.all())
 
     class Meta:
         model = Member
