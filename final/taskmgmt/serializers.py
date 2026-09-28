@@ -75,7 +75,7 @@ class LoginSerializer(TokenObtainPairSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
     # Pulls just the 'username' string from each member in the project
-    members = serializers.SlugRelatedField(many=True, slug_field='username', queryset=User.objects.all())
+    members = serializers.SlugRelatedField(many=True, slug_field='username', read_only=True)
 
     class Meta:
         model = Project

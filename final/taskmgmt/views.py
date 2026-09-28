@@ -185,7 +185,8 @@ class ProjectView(APIView):
         operation_id="create_a_project",
         summary="Create Project",
         description="Enables an authenticated user to create a project.",
-        request=ProjectSerializer,
+        # 1. Class Name, 2. Base Class - Must be a tuple, expects inheritance of base classes (Inheritance,) { 3. Class Attributes/Fields }
+        request=type("CreateProjectRequest", (ProjectSerializer,), {"members": serializers.ListField(child=serializers.CharField(), required=False)}),
         responses={
             201: OpenApiResponse(description="Project Created."),
             400: OpenApiResponse(description="Check credentials."),
@@ -213,7 +214,7 @@ class ProjectView(APIView):
                 Member.objects.bulk_create(members_to_create, ignore_conflicts=True)
 
         # Re-serialize so 'members' includes the creator + added users
-        response_serializer = ProjectSerializer(project, context={'request': request})
+        response_serializer = ProjectSerializer(project)
         
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
@@ -221,7 +222,7 @@ class ProjectView(APIView):
         operation_id="update_project",
         summary="Update Project Info",
         description="Enables an authenticated user to modify a project created by them.",
-        request=inline_serializer(name="UpdateProjectRequest", fields={"name": serializers.CharField(required=False), "description": serializers.CharField(required=False)}),
+        request=ProjectSerializer,
         responses={
             200: OpenApiResponse(description="Project Modified."),
             400: OpenApiResponse(description="Check credentials."),
