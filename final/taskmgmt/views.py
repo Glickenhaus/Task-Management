@@ -178,8 +178,6 @@ class ProjectView(APIView):
     # View Created Projects
     def get(self, request):
         data = Project.objects.filter(members=self.request.user)
-        if request.user.is_superuser:
-            data = Project.objects.all()
         serializer = ProjectSerializer(data, many=True)
         return Response(serializer.data)
 
@@ -201,7 +199,7 @@ class ProjectView(APIView):
         serializer.is_valid(raise_exception=True)
         project = serializer.save(owner=self.request.user)
 
-        Member.objects.create(project=project, user=self.request.user, role=Member.Role.OWNER)
+        Member.objects.get_or_create(project=project, user=self.request.user, role=Member.Role.OWNER)
 
         members = self.request.data.get('members', [])
         if members:
@@ -211,8 +209,8 @@ class ProjectView(APIView):
                 Member(project=project, user=user, role=Member.Role.MEMBER)
                 for user in members_to_add
             ]
-        if members_to_create:
-            Member.objects.bulk_create(members_to_create, ignore_conflicts=True)
+            if members_to_create:
+                Member.objects.bulk_create(members_to_create, ignore_conflicts=True)
 
         # Re-serialize so 'members' includes the creator + added users
         response_serializer = ProjectSerializer(project)
