@@ -213,7 +213,7 @@ class ProjectView(APIView):
                 Member.objects.bulk_create(members_to_create, ignore_conflicts=True)
 
         # Re-serialize so 'members' includes the creator + added users
-        response_serializer = ProjectSerializer(project)
+        response_serializer = ProjectSerializer(project, context={'request': request})
         
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
