@@ -208,7 +208,7 @@ class ProjectView(APIView):
             # Fetch matching users in a single query, excluding the creator
             members_to_add = User.objects.filter(username__in=members).exclude(id=self.request.user.id)
             members_to_create = [
-                Member.objects.create(project=project, user=user, role=Member.Role.MEMBER)
+                Member(project=project, user=user, role=Member.Role.MEMBER)
                 for user in members_to_add
             ]
         if members_to_create:
@@ -323,7 +323,7 @@ class AddMember(APIView):
         operation_id="add_project_members",
         summary="Add Members",
         description="Enables an authenticated user to add members to a specific project. Restricted to the project owner or admins.",
-        request=inline_serializer(name="AddMembers", fields={'members': serializers.ListField(help_text="A list of members to be added.")}),
+        request=ProjectSerializer['members'],
         responses={
             200: OpenApiResponse(description="Adds Members."),
             400: OpenApiResponse(description="Check Credentials."),
@@ -368,7 +368,7 @@ class AddMember(APIView):
         users_to_add = User.objects.filter(username__in=usernames).exclude(username__in=project.members.values_list('username'))
 
         new_members = [
-            Member.objects.create(project=project, user=user, role=Member.Role.MEMBER)
+            Member(project=project, user=user, role=Member.Role.MEMBER)
             for user in users_to_add
         ]
         Member.objects.bulk_create(new_members, ignore_conflicts=True)
@@ -384,7 +384,7 @@ class RemoveMember(APIView):
         operation_id="remove_project_members",
         summary="Remove Members",
         description="Enables an authenticated user to remove members from a specific project. Restricted to the project owner or admins.",
-        request=inline_serializer(name="RemoveMembers", fields={'members': serializers.ListField(help_text="A list of members to be removed.")}),
+        request=ProjectSerializer['members'],
         responses={
             200: OpenApiResponse(description="Removes Members."),
             400: OpenApiResponse(description="Check Credentials."),
