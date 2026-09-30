@@ -92,7 +92,6 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'description', 'status', 'due_date', 'project', 'assigned_to', 'created_by', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
 
-        validators = []
 
     def validate(self, attrs):
         # Enforce Rule: Only members of the project can be assigned tasks.
