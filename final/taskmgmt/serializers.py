@@ -145,7 +145,7 @@ class TaskSerializer(serializers.ModelSerializer):
             if restricted:
                 raise serializers.ValidationError(f"You do not have permission to modify {restricted}.")    
 
-        if not self.instance:
+        elif not self.instance:
 
             task_title = attrs.get('title')
 
