@@ -63,9 +63,6 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=['title', 'project'], name='unique_task_in_project')]
-
     def __str__(self):
         return f"{self.title} ({self.status})"
 

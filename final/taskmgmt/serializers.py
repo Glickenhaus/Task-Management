@@ -112,6 +112,13 @@ class TaskSerializer(serializers.ModelSerializer):
 
         restricted_fields = ['title', 'description', 'due_date', 'assigned_to']
 
+        task_title = attrs.get('title', getattr(self.instance, 'title', None))
+
+        exists = Task.objects.filter(title=task_title, project=project).exists()
+
+        if exists:
+            raise serializers.ValidationError({'title': 'A task with this title already exists in the project.'})
+
         if project:
             member = Member.objects.filter(project=project, user=user).first()
             if user and not member:
