@@ -624,7 +624,7 @@ class TaskComments(APIView):
 
         comments = Comment.objects.filter(task=task).select_related('user').order_by('date')
         serializer = CommentSerializer({'task': task.title, 'comments': comments}, many=True, context={'request': request})
-        serializer.data.pop('task')
+        serializer.data.pop('task', None)  # Remove the task field from the serialized data
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class Admin(APIView):
