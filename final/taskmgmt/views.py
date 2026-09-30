@@ -546,10 +546,26 @@ class Comments(APIView):
     def get(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
-        comment = Comment.objects.filter(task__project=project)
-        serializer = CommentSerializer(comment, many=True, context={'request': request})
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Get all comments belonging to tasks in this project.
+        # select_related() loads each comment's task and user in the same database query.
+                         # This improves performance when using comment.task and comment.user.
+        # order_by() groups comments by task, then sort each task's comments by creation time.
+        comments = (Comment.objects.filter(task__project=project).select_related('task', 'user').order_by('task_id', 'created_at'))
+
+        grouped_comments = {}
+
+        for comment in comments:
+            task_id = comment.task_id
+
+            # Create a group for this task the first time it is encountered.
+            if task_id not in grouped_comments:
+                grouped_comments[task_id] = {"task": comment.task.title, "comments": []}
+
+            # Serialize the individual comment and add it to its task group.
+            grouped_comments[task_id]["comments"].append(CommentSerializer(comment, context={'request': request}).data)
+
+        return Response(list(grouped_comments.values()), status=status.HTTP_200_OK)
 
     @extend_schema(
         operation_id="make_comment",
@@ -574,6 +590,36 @@ class Comments(APIView):
         serializer.save(task=task, user=self.request.user)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class TaskComments(APIView):
+    
+    permission_classes = [IsMember]
+
+    @extend_schema(
+        operation_id="get_task_comments",
+        summary="View Task Comments",
+        description="Enables an authenticated user to view the comments associated with a specific task. Restricted to project members.",
+        request=CommentSerializer,
+        responses={
+            200: OpenApiResponse(description="Displays Task Comments."),
+            401: OpenApiResponse(description="Unauthenticated or Invalid Token."),
+            403: OpenApiResponse(description="Not authorized to perform action."),
+            404: OpenApiResponse(description="Project or task not found.")
+        },
+        tags=["Task"]
+    )
+    def get(self, request, pk, pkt):
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
+        task = get_object_or_404(Task, pk=pkt)
+
+        if task.project != project:
+            return Response({"task": "You can not view comments of a task of a project it does not belong to."}, status=status.HTTP_403_FORBIDDEN)
+
+        comments = Comment.objects.filter(task=task).select_related('user').order_by('created_at')
+        serializer = CommentSerializer(comments, many=True, context={'request': request})
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class Admin(APIView):
     permission_classes = [IsAdminUser]

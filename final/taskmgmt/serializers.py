@@ -156,10 +156,7 @@ class TaskSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'title': 'A task with this title already exists in the project.'})
 
         elif 'title' in attrs:
-            exists = Task.objects.filter(
-                title=attrs['title'],
-                project=project
-            ).exclude(pk=self.instance.pk).exists()
+            exists = Task.objects.filter(title=attrs['title'], project=project).exclude(pk=self.instance.pk).exists() # Excludes the current task being updated
 
             if exists:
                 raise serializers.ValidationError({

@@ -23,6 +23,7 @@ urlpatterns = [
     path('projects/<int:pk>/tasks/<int:pkt>/update/', views.Tasks.as_view(http_method_names=['patch']), name='update_task'),
     path('projects/<int:pk>/tasks/<int:pkt>/delete/', views.Tasks.as_view(http_method_names=['delete']), name='delete_task'),
     path('projects/<int:pk>/tasks/comments/', views.Comments.as_view(http_method_names=['get']), name='view_comments'),
+    path('projects/<int:pk>/tasks/<int:pkt>/comments/', views.TaskComments.as_view(http_method_names=['get']), name='view_task_comments'),
     path('projects/<int:pk>/tasks/<int:pkt>/comment/', views.Comments.as_view(http_method_names=['post']), name='comment_on_task'),
     path('projects/tasks/comments/', views.AdminProject.as_view(), name='view_projects,_tasks_and_comments'),
 ]
