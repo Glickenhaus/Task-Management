@@ -551,7 +551,7 @@ class Comments(APIView):
         # select_related() loads each comment's task and user in the same database query.
                          # This improves performance when using comment.task and comment.user.
         # order_by() groups comments by task, then sort each task's comments by creation time.
-        comments = (Comment.objects.filter(task__project=project).select_related('task', 'user').order_by('task_id', 'created_at'))
+        comments = (Comment.objects.filter(task__project=project).select_related('task', 'user').order_by('task_id', 'date'))
 
         grouped_comments = {}
 
@@ -616,7 +616,7 @@ class TaskComments(APIView):
         if task.project != project:
             return Response({"task": "You can not view comments of a task of a project it does not belong to."}, status=status.HTTP_403_FORBIDDEN)
 
-        comments = Comment.objects.filter(task=task).select_related('user').order_by('created_at')
+        comments = Comment.objects.filter(task=task).select_related('user').order_by('date')
         serializer = CommentSerializer(comments, many=True, context={'request': request})
 
         return Response(serializer.data, status=status.HTTP_200_OK)
