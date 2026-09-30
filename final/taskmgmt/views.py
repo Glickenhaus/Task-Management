@@ -623,9 +623,8 @@ class TaskComments(APIView):
             return Response({"task": "You can not view comments of a task of a project it does not belong to."}, status=status.HTTP_403_FORBIDDEN)
 
         comments = Comment.objects.filter(task=task).select_related('user').order_by('date')
-        comments.pop('task')
         serializer = CommentSerializer({'task': comments.task.title, 'comments': comments}, many=True, context={'request': request})
-
+        serializer.data.pop('task')
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class Admin(APIView):
