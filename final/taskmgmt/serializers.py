@@ -145,14 +145,25 @@ class TaskSerializer(serializers.ModelSerializer):
             if restricted:
                 raise serializers.ValidationError(f"You do not have permission to modify {restricted}.")    
 
-        elif not self.instance:
+        if not self.instance:
 
             task_title = attrs.get('title')
 
             exists = Task.objects.filter(title=task_title, project=project).exists()
 
             if exists:
-                raise serializers.ValidationError({'title': 'A task with this title already exists in the project.'})   
+                raise serializers.ValidationError({'title': 'A task with this title already exists in the project.'})
+
+        elif 'title' in attrs:
+            exists = Task.objects.filter(
+                title=attrs['title'],
+                project=project
+            ).exclude(pk=self.instance.pk).exists()
+
+            if exists:
+                raise serializers.ValidationError({
+                    'title': 'A task with this title already exists in the project.'
+                })
 
         return attrs
 
