@@ -562,8 +562,14 @@ class Comments(APIView):
             if task_id not in grouped_comments:
                 grouped_comments[task_id] = {"task": comment.task.title, "comments": []}
 
-            # Serialize the individual comment and add it to its task group.
-            grouped_comments[task_id]["comments"].append(CommentSerializer(comment, context={'request': request}).data)
+        # Serialize the individual comment and add it to its task group.
+            # Serialize the comment into a dictionary.
+            comment_data = CommentSerializer(comment, context={'request': request}).data
+            
+            # Remove the task field from this individual comment.
+            comment_data.pop('task', None)
+
+            grouped_comments[task_id]["comments"].append(comment_data)
 
         return Response(list(grouped_comments.values()), status=status.HTTP_200_OK)
 
