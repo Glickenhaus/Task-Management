@@ -110,7 +110,15 @@ class TaskSerializer(serializers.ModelSerializer):
 
         status = attrs.get('status', getattr(self.instance, 'status', None))
 
-        restricted_fields = ['title', 'description', 'due_date', 'assigned_to']        
+        restricted_fields = ['title', 'description', 'due_date', 'assigned_to']     
+
+        if not self.instance:
+            task_title = attrs.get('title')
+        
+            exists = Task.objects.filter(title=task_title, project=project).exists()
+        
+            if exists:
+                raise serializers.ValidationError({'title': 'A task with this title already exists in the project.'})   
 
         if project:
             member = Member.objects.filter(project=project, user=user).first()
@@ -128,15 +136,6 @@ class TaskSerializer(serializers.ModelSerializer):
 
             if not self.instance and status in ['IN_PROGRESS', 'COMPLETED']:
                 raise serializers.ValidationError({"status": "Status can only be set to 'PENDING' upon creation."})
-
-        if not self.instance:
-
-            task_title = attrs.get('title')
-        
-            exists = Task.objects.filter(title=task_title, project=project).exists()
-        
-            if exists:
-                raise serializers.ValidationError({'title': 'A task with this title already exists in the project.'})
 
         restricted = []
         if self.instance:
