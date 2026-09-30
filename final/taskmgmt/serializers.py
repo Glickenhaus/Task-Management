@@ -131,7 +131,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
             if not self.instance:
 
-                task_title = attrs.get('title', getattr(self.instance, 'title', None))
+                task_title = attrs.get('title')
             
                 exists = Task.objects.filter(title=task_title, project=project).exists()
             
@@ -140,6 +140,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
         restricted = []
         if self.instance:
+
             task = self.context.get('task', getattr(self.instance, 'task', None))
             if project and task.project != project:
                 raise serializers.ValidationError({"task": f"Task {task.id} is not associated with project {project.name}."})
