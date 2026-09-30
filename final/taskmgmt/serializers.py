@@ -111,15 +111,7 @@ class TaskSerializer(serializers.ModelSerializer):
         status = attrs.get('status', getattr(self.instance, 'status', None))
 
         restricted_fields = ['title', 'description', 'due_date', 'assigned_to']     
-
-        if not self.instance:
-
-            task_title = attrs.get('title')
-        
-            exists = Task.objects.filter(title=task_title, project=project).exists()
-        
-            if exists:
-                raise serializers.ValidationError({'title': 'A task with this title already exists in the project.'})   
+ 
 
         if project:
             member = Member.objects.filter(project=project, user=user).first()
@@ -140,7 +132,6 @@ class TaskSerializer(serializers.ModelSerializer):
 
         restricted = []
         if self.instance:
-            validators = []
             task = self.context.get('task', getattr(self.instance, 'task', None))
             if project and task.project != project:
                 raise serializers.ValidationError({"task": f"Task {task.id} is not associated with project {project.name}."})
@@ -152,7 +143,16 @@ class TaskSerializer(serializers.ModelSerializer):
                 if field in attrs and role == Member.Role.MEMBER:
                     restricted.append(field)
             if restricted:
-                raise serializers.ValidationError(f"You do not have permission to modify {restricted}.")     
+                raise serializers.ValidationError(f"You do not have permission to modify {restricted}.")    
+
+        if not self.instance:
+
+            task_title = attrs.get('title')
+
+            exists = Task.objects.filter(title=task_title, project=project).exists()
+
+            if exists:
+                raise serializers.ValidationError({'title': 'A task with this title already exists in the project.'})   
 
         return attrs
 
