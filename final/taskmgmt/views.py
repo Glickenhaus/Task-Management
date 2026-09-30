@@ -622,10 +622,11 @@ class TaskComments(APIView):
         if task.project != project:
             return Response({"task": "You can not view comments of a task of a project it does not belong to."}, status=status.HTTP_403_FORBIDDEN)
 
-        comments = Comment.objects.filter(task=task).select_related('task', 'user').order_by('date')
-        serializer = CommentSerializer({'task': comments.task.title, 'comments': comments}, many=True, context={'request': request})
-        serializer.data.pop('task', None)  # Remove the task field from the serialized data
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        comments = Comment.objects.filter(task=task).select_related('user').order_by('date')
+        serializer = CommentSerializer(comments, many=True, context={'request': request})
+        for serializers in serializer.data:
+            serializers.pop('task', None)  # Remove the task field from each serialized comment
+        return Response({'task': task.title, 'comments': serializer.data}, status=status.HTTP_200_OK)
 
 class Admin(APIView):
     permission_classes = [IsAdminUser]
