@@ -178,8 +178,10 @@ class ProjectView(APIView):
     # View Created Projects
     def get(self, request):
         data = Project.objects.filter(members=self.request.user)
+        role = Member.objects.filter(project__in=data, user=self.request.user).values_list('role', flat=True)
         serializer = ProjectSerializer(data, many=True)
-        return Response(serializer.data)
+        roles = RoleSerializer(data=Member.objects.filter(project__in=data, user=self.request.user), many=True)
+        return Response(serializer.data, roles.data, status=status.HTTP_200_OK)
 
     @extend_schema(
         operation_id="create_a_project",
