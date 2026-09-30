@@ -116,7 +116,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
         exists = Task.objects.filter(title=task_title, project=project).exists()
 
-        if exists:
+        if not self.instance and exists:
             raise serializers.ValidationError({'title': 'A task with this title already exists in the project.'})
 
         if project:
