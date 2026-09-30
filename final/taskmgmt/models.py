@@ -50,7 +50,7 @@ class Task(models.Model):
         IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
         COMPLETED = 'COMPLETED', 'Completed'
 
-    title = models.CharField(max_length=255, unique=True)
+    title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     due_date = models.DateField(null=True, blank=True, validators=[MinValueValidator(datetime.date.today())])
@@ -62,6 +62,9 @@ class Task(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['title', 'project'], name='unique_task_in_project')]
 
     def __str__(self):
         return f"{self.title} ({self.status})"
