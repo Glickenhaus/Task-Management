@@ -74,12 +74,33 @@ class LoginSerializer(TokenObtainPairSerializer):
 
 class ProjectSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
+    
     # Pulls just the 'username' string from each member in the project
     members = serializers.SlugRelatedField(many=True, slug_field='username', read_only=True)
 
+    # A read-only field whose value is calculated separately for each project.
+    # DRF calls get_role(project) while serializing that project.
+    role = serializers.SerializerMethodField()
+
+    def get_role(self, project):
+        # The view passes the current request into the serializer's context.
+        # This lets us identify which user's role to return.
+        request = self.context.get('request')
+
+        # If no request was passed, there is no current user to look up.
+        if request is None:
+            return None
+
+        # Find this user's membership in this project and return their role.
+        # first() returns the role value, or None if no matching membership exists.
+        return Member.objects.filter(
+            project=project,
+            user=request.user
+        ).values_list('role', flat=True).first()
+
     class Meta:
         model = Project
-        fields = ['id', 'name', 'description', 'owner', 'members', 'created_at']
+        fields = ['id', 'name', 'description', 'owner', 'members', 'created_at', 'role']
         read_only_fields = ['id', 'owner', 'created_at']
 
 class TaskSerializer(serializers.ModelSerializer):
