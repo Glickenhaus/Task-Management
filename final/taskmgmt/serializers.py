@@ -160,6 +160,9 @@ class TaskSerializer(serializers.ModelSerializer):
         
             if 'project' in attrs and not user.is_superuser:
                 raise serializers.ValidationError("You can not change this task's project.")
+
+            if assigned_to != user and role == Member.Role.MEMBER:
+                raise serializers.ValidationError({"assigned_to": "You can only update tasks you are assigned to."})
             
             for field in restricted_fields:
                 if field in attrs and role == Member.Role.MEMBER:
