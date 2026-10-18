@@ -146,7 +146,7 @@ class TaskSerializer(serializers.ModelSerializer):
             if assigned_to and not project.members.filter(id=assigned_to.id).exists():
                 raise serializers.ValidationError({"assigned_to": f"User {assigned_to.username} is not a member of project {project.name}."})
 
-            if user and role == 'MEMBER' and assigned_to != user:
+            if user and role == 'MEMBER' and assigned_to != user and request.method in ['POST']:
                 raise serializers.ValidationError({"assigned_to": "Only admins or owners can assign tasks to others."})
 
             if not self.instance and status in ['IN_PROGRESS', 'COMPLETED']:
