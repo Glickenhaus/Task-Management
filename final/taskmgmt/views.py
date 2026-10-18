@@ -10,7 +10,7 @@ from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, Bl
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
-from .permissions import IsOwnerOrAdmin, IsMember, IsOwner, CanManageTask
+from .permissions import IsOwnerOrAdmin, IsMember, IsOwner
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 User = get_user_model()
